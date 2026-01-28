@@ -125,11 +125,9 @@ A single test demonstrating the bug
 Unskip the test when it is ready.
 """
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(..)
+@pytest.mark.xfail(reason="The average is incorrect")
 def test_bug():
-    # TODO
-    raise NotImplementedError
+    assert get_avg([1]) == ((1 + 100) * 100 / 2) / 100
 
 """
 Simple command-line interface

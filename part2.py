@@ -6,6 +6,10 @@ from hypothesis import given
 from hypothesis import strategies as st
 import pytest
 
+z = st.integers()
+t = st.text()
+lt = st.lists(t)
+
 """
 Below we have a basic Python class that is used to store user information.
 The user is defined by a name, an age, and a list of friends.
@@ -47,10 +51,15 @@ Remember to remove @pytest.mark.skip(reason="Unimplemented")
 to enable the test when you are done.
 """
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(..)
+@given(t, z, st.one_of(lt, st.none()))
 def test_user_init(name, age, friends):
-    raise NotImplementedError
+    user = User(name, age, friends)
+    assert user.name == name
+    assert user.age == age
+    if friends:
+        assert user.friends == friends
+    else:
+        assert user.friends == []
 
 """
 2. The next few exercises are about serialization and deserialization.
@@ -67,12 +76,11 @@ The from_csv function should take a string and return a User object.
 """
 
 def to_csv(user):
-    # TODO
-    raise NotImplementedError
+    return f"{user.name},{user.age}"
 
 def from_csv(csv):
-    # TODO
-    raise NotImplementedError
+    name, age = csv.split(",")
+    return User(name, int(age))
 
 """
 3. (Complete exerise 2 before doing this!)
@@ -90,14 +98,13 @@ If they don't pass: add a @pytest.mark.xfail annotation to the test.
 Don't modify the implementation yet, and don't modify either test.
 """
 
-@pytest.mark.skip(reason="See exercise 3")
-@given(st.text(), st.integers())
+@given(t, z)
 def test_serialize_deserialize(name, age):
     user = User(name, age)
     assert from_csv(to_csv(user)) == user
 
-@pytest.mark.skip(reason="See exercise 3")
-@given(st.text(), st.integers())
+@pytest.mark.xfail(reason="The implementation is buggy")
+@given(t, z)
 def test_deserialize_serialize(name, age):
     csv = f"{name},{age}"
     assert to_csv(from_csv(csv)) == csv
@@ -110,7 +117,7 @@ If either test failed:
 4. What went wrong?
 
 ===== ANSWER Q4 BELOW =====
-
+The second test failed when the name had a comma in it, since that was used as the delimiter for splitting.
 ===== END OF Q4 ANSWER =====
 
 5. There are at least 4 ways we could modify our code:
@@ -123,7 +130,7 @@ If either test failed:
 Which of the above solutions would succeed to get the tests passing?
 
 ===== ANSWER Q5 BELOW =====
-
+Making the second, third, and fourth modifications would get the tests to pass. 
 ===== END OF Q5 ANSWER =====
 
 6. Do you have a preferred solution?
@@ -131,13 +138,15 @@ Imagine this were a real application and real users were entering their names in
 production. Would one of the above solutions be more secure than the others?
 
 ===== ANSWER Q6 BELOW =====
-
+I would prefer to do the second modification, since some names do have commas in them
 ===== END OF Q6 ANSWER =====
 
 7. Pick one way and implement it below.
 """
 
-# TODO: Implement the fix here
+def from_csv(csv):
+    name, age = csv.rsplit(",", 1)
+    return User(name, int(age))
 
 """
 8. The remaining exercises will explore some interesting limitations of Hypothesis.
@@ -146,7 +155,7 @@ The following function was added to print out information about the user.
 Try writing a Hypothesis test for this function. Is what you wrote useful?
 
 ===== ANSWER Q8 BELOW =====
-
+No, sinc the function does not return anything, there is no way to check if the function was implemented correctly.
 ===== END OF Q8 ANSWER =====
 """
 
@@ -154,14 +163,10 @@ def print_user(self):
     friends_str = " ".join(self.friends)
     print(f"INFO: User {self.name} is {self.age} years old and has friends: {friends_str}")
 
-@pytest.mark.skip(reason="Unimplemented")
-@given(
-    st.text(),
-    st.integers(),
-    st.lists(st.text()),
-)
+@given(t, z, lt)
 def test_print_user(name, age, friends):
-    raise NotImplementedError
+    user = User(name, age, friends)
+    assert print_user(user) == None
 
 """
 9. Below we have a function to check whether a user is a friend of another user.
@@ -170,27 +175,16 @@ However, it was implemented incorrectly.
 Uncomment the test. It runs for a long time before failing -- why?
 
 ===== ANSWER Q9 BELOW =====
-
+The test fails because Python exceeds the maximum recursion depth.
 ===== END OF Q9 ANSWER =====
 
 Fix the has_friend implementation so that the test passes.
 """
 
 def has_friend(self, other):
-    if has_friend(other, self):
-        return True
-    return other.name in self.friends
+    return other.name in self.friends and self.name in other.friends
 
-@pytest.mark.skip(reason="Unskip for exercise 9")
-@pytest.mark.xfail
-@given(
-    st.text(),
-    st.integers(),
-    st.lists(st.text()),
-    st.text(),
-    st.integers(),
-    st.lists(st.text()),
-)
+@given(t, z ,lt, t, z, lt)
 def test_has_friend(name1, age1, friends1, name2, age2, friends2):
     user1 = User(name1, age1, friends1)
     user2 = User(name2, age2, friends2)
@@ -203,7 +197,7 @@ def test_has_friend(name1, age1, friends1, name2, age2, friends2):
 Why or why not?
 
 ===== ANSWER Q10 BELOW =====
-
+Yes, we can just check if the two users elements of each others friend lists, which runs in linear time.
 ===== END OF Q10 ANSWER =====
 
 """
@@ -217,7 +211,7 @@ let's assume that the server is not available.
 What happens when you uncomment the test?
 
 ===== ANSWER Q11 BELOW =====
-
+Since the server is not available, the response is always None, so the tet runs indefinitely.
 ===== END OF Q11 ANSWER =====
 
 **Important:** Make sure you mark the test as skipped again afterwards, so that your pytest still runs!
@@ -252,7 +246,7 @@ def test_user_from_server():
 Why or why not?
 
 ===== ANSWER Q12 BELOW =====
-
+No, there is no assertion that could be written, since checking if a program will ever halt is undecidable.
 ===== END OF Q12 ANSWER =====
 """
 
@@ -265,20 +259,14 @@ Unskip the test. What happens?
 Explain what might have gone wrong here.
 
 ===== ANSWER Q13 BELOW =====
-
+The test passes. This is because the users start out with no friends, so the expected behavior matches the buggy behavior.
 ===== END OF Q13 ANSWER =====
 """
 
 def add_friend(self, other):
     self.friends = [other.name]
 
-@pytest.mark.skip(reason="Unskip for exercise 13")
-@given(
-    st.text(),
-    st.integers(),
-    st.text(),
-    st.integers(),
-)
+@given(t, z, t, z)
 def test_add_friend(name1, age1, name2, age2):
     user1 = User(name1, age1)
     user2 = User(name2, age2)
@@ -290,7 +278,7 @@ def test_add_friend(name1, age1, name2, age2):
 about specifications?
 
 ===== ANSWER Q14 BELOW =====
-
+Specifications should be exhaustive, since even buggy implementations can pass non-exhaustive testing.
 ===== END OF Q14 ANSWER =====
 
 """
@@ -321,11 +309,12 @@ The test should fail.
 def update_age_with(self, f):
     return User(self.name, f(self.age), self.friends)
 
-@pytest.mark.skip(reason="Unimplemented")
-@pytest.mark.xfail
-# @given(..)
+@pytest.mark.xfail(reason="The function is not pure")
+@given(t, z, st.functions(like=lambda x: x, returns=st.integers()))
 def test_update_age_with_1(name, age, f):
-    raise NotImplementedError
+    user = User(name, age)
+    user_update = update_age_with(user, f)
+    assert user_update.age == f(age)
 
 """
 16. A function is called "pure" if it does not modify its state when called,
@@ -338,10 +327,11 @@ by adding pure=True to the st.functions strategy.
 The test should pass.
 """
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(..)
+@given(t, z, st.functions(like=lambda x: x, returns=st.integers(), pure=True))
 def test_update_age_with_2(name, age, f):
-    raise NotImplementedError
+    user = User(name, age)
+    user_update = update_age_with(user, f)
+    assert user_update.age == f(age)
 
 """
 17. Bonus question (Extra credit):
@@ -356,6 +346,6 @@ Is there any way to test that the function behaves correctly without assuming f 
 Answer in words only. Hint: Python is a highly dynamic language!
 
 ===== ANSWER Q17 BELOW =====
-
+Yes, we can use a wrapper around the function that keeps track of the state over multiple calls of update_age_with.
 ===== END OF Q17 ANSWER =====
 """

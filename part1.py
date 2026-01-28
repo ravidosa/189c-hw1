@@ -2,9 +2,11 @@
 Part 1: Mini exercises
 """
 
-from hypothesis import given
+from hypothesis import given, assume
 from hypothesis import strategies as st
 import pytest
+
+z = st.integers(min_value=-1000, max_value=1000)
 
 """
 A. Writing specifications
@@ -46,39 +48,30 @@ for the property in mind, and use assert() statements to check the property.
 You may also choose to use assume() statements also if you find them helpful.
 """
 
-@given(
-    st.integers(min_value=0, max_value=1000),
-)
+@given(z)
 def test_abs_1(x):
+    assume(x >= 0)
     assert abs(x) == x
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(...)
+@pytest.mark.xfail(reason="The property is not true")
+@given(z, z)
 def test_abs_2(x, y):
-    # In Python code, a good way to indicate unimplemented
-    # functions is to raise a NotImplementedError exception.
-    # We will use this style in the rest of the file. Remove the following
-    # lines once you have implemented the test.
-    # TODO
-    raise NotImplementedError
+    assume(x < y)
+    assert abs(x) < abs(y)
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(...)
+@pytest.mark.xfail(reason="The property is not true")
+@given(z, z)
 def test_abs_3(x, y):
-    # TODO
-    raise NotImplementedError
+    assume(x == y + 1)
+    assert abs(x) == abs(y) + 1
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(...)
+@given(z)
 def test_abs_4(x):
-    # TODO
-    raise NotImplementedError
+    assert abs(abs(x)) == abs(x)
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(...)
+@given(z, z)
 def test_abs_5(x, y):
-    # TODO
-    raise NotImplementedError
+    assert abs(x + y) <= abs(x) + abs(y)
 
 """
 B. Stronger and weaker specifications.
@@ -94,17 +87,15 @@ You may change the method signatures in test_abs_6_weaker and test_abs_6_stronge
 (as well as in the following part test_q8) if you would like to add additional parameters.
 """
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(...)
+@given(z)
 def test_abs_6_weaker(x):
-    # TODO
-    raise NotImplementedError
+    assert abs(x) >= 0
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(...)
+@pytest.mark.xfail(reason="The property is not true")
+@given(z)
 def test_abs_6_stronger(x):
-    # TODO
-    raise NotImplementedError
+    assert abs(x) >= 0
+    assert abs(x) == x
 
 """
 Now answer the following questions:
@@ -112,7 +103,7 @@ Now answer the following questions:
 7. Is it possible to have an implementation of abs() that is the other way around, i.e. passes your stronger spec and fails the weaker one?
 
 ===== ANSWER Q7 BELOW =====
-
+No, it is not possible. Since the second spec is stronger than the first, every program that passes the scond spec will pass the first one, including every possible implementation of abs.
 ===== END OF Q7 ANSWER =====
 
 8. Is it possible to have an implementation of abs() that is different than the correct implementation (it should differ in a meaningful way on at least one input),
@@ -121,22 +112,19 @@ but still passes the same set of specs from Q1-Q5?
 If so, give an example, if not, state why not.
 
 ===== ANSWER Q8 BELOW =====
-
+Yes, it is is possible. We can have the implementation return just x instad of |x|.
 ===== END OF Q8 ANSWER =====
 """
 
-# Example here (if any)
 def q8_example(x):
-    # TODO
-    raise NotImplementedError
+    return x
 
-# If so, write a test that shows it passes the tests so far
-# (Otherwise, leave the code below as skipped and change the reason= annotation)
-@pytest.mark.skip(reason="Unimplemented")
-# @given(...)
-def test_q8(x):
-    # TODO
-    raise NotImplementedError
+@given(z, z)
+def test_q8(x, y):
+    assert q8_example(q8_example(x)) == q8_example(x)
+    assert q8_example(x + y) <= q8_example(x) + q8_example(y)
+    assume(x >= 0)
+    assert q8_example(x) == x
 
 """
 C. Writing specifications, continued
@@ -169,14 +157,17 @@ def pad_with_spaces(s, n):
         return None
     return s + " " * (n - len(s))
 
-@pytest.mark.skip(reason="Unimplemented")
 @given(
     st.text(),
     st.integers(min_value=0, max_value=1000),
 )
 def test_pad_with_spaces(s, n):
-    # TODO
-    raise NotImplementedError
+    pad = pad_with_spaces(s, n)
+    if len(s) > n:
+        assert pad == None
+    else:
+        assert pad[:len(s)] == s
+        assert pad[len(s):] == (n - len(s)) * " "
 
 def split_in_half(s):
     """
@@ -187,11 +178,14 @@ def split_in_half(s):
     mid = (len(s) + 1) // 2
     return s[:mid], s[mid:]
 
-@pytest.mark.skip(reason="Unimplemented")
 @given(st.text())
 def test_split_in_half(s):
-    # TODO
-    raise NotImplementedError
+    s1, s2 = split_in_half(s)
+    assert s1 + s2 == s
+    if len(s) % 2 == 0:
+        assert len(s1) == len(s2)
+    else:
+        assert len(s1) == len(s2) + 1
 
 """
 11. Modify split_in_half to introduce an off-by-one error.
@@ -212,14 +206,18 @@ part of the course.
 """
 
 def split_in_half_buggy(s):
-    # TODO
-    raise NotImplementedError
+    mid = len(s) // 2
+    return s[:mid], s[mid:]
 
-@pytest.mark.skip(reason="Unimplemented")
+@pytest.mark.xfail(reason="The implementation is buggy")
 @given(st.text())
 def test_split_in_half_buggy(s):
-    # TODO
-    raise NotImplementedError
+    s1, s2 = split_in_half_buggy(s)
+    assert s1 + s2 == s
+    if len(s) % 2 == 0:
+        assert len(s1) == len(s2)
+    else:
+        assert len(s1) == len(s2) + 1
 
 """
 D. Exploring preconditions: Fahrenheit-Celsius conversion
@@ -288,19 +286,15 @@ once you have implemented each test.
 
 from hypothesis import settings
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(st.integers(..))
+@given(st.integers(min_value=-42, max_value=142))
 @settings(max_examples=500)
 def test_f_to_c_v1(f):
-    # TODO
-    raise NotImplementedError
+    assert abs(f_to_c_v1(f) - true_f_to_c(f)) <= 5
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(st.integers(..))
+@given(st.integers(min_value=-17, max_value=37))
 @settings(max_examples=500)
 def test_c_to_f_v1(c):
-    # TODO
-    raise NotImplementedError
+    assert abs(c_to_f_v1(c) - true_c_to_f(c)) <= 5
 
 """
 13. Here is a more precise trick:
@@ -322,26 +316,22 @@ the conversion is close to correct: within 1 degree of the true conversion.
 """
 
 def f_to_c_v2(f):
-    # TODO
-    raise NotImplementedError
+    x = (f - 32) / 2
+    return round(x + x / 10)
 
 def c_to_f_v2(c):
-    # TODO
-    raise NotImplementedError
+    x = 2 * c
+    return round(x - x // 10 + 32)
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(..)
-# @settings(max_examples=500)
+@given(st.integers(min_value=-157, max_value=221))
+@settings(max_examples=500)
 def test_f_to_c_v2(f):
-    # TODO
-    raise NotImplementedError
+    assert abs(f_to_c_v2(f) - true_f_to_c(f)) <= 1
 
-@pytest.mark.skip(reason="Unimplemented")
-# @given(..)
-# @settings(max_examples=500)
+@given(st.integers(min_value=-1000000, max_value=1000000)) # works for all values
+@settings(max_examples=500)
 def test_c_to_f_v2(c):
-    # TODO
-    raise NotImplementedError
+    assert abs(c_to_f_v2(c) - true_c_to_f(c)) <= 1
 
 """
 14. We would also like it to be true that converting from C to F,
@@ -356,16 +346,12 @@ and find the smallest and largest values for which the property holds.
 Use the more precise _v2 versions for this problem.
 """
 
-# @given(..)
-# @settings(max_examples=500)
-@pytest.mark.skip(reason="Unimplemented")
+@given(st.integers(min_value=-6, max_value=1))
+@settings(max_examples=500)
 def test_f_to_c_to_f(x):
-    # TODO
-    raise NotImplementedError
+    assert abs(c_to_f_v2(f_to_c_v2(x)) - x) <= 1
 
-# @given(..)
-# @settings(max_examples=500)
-@pytest.mark.skip(reason="Unimplemented")
+@given(st.integers(min_value=-105, max_value=149))
+@settings(max_examples=500)
 def test_c_to_f_to_c(x):
-    # TODO
-    raise NotImplementedError
+    assert abs(f_to_c_v2(c_to_f_v2(x)) - x) <= 1
